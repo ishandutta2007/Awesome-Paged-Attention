@@ -122,6 +122,17 @@ To advance this documentation repository, structural setup, or post-training pip
 * Generate a **comprehensive Markdown table** explicitly comparing Contiguous VRAM Allocation, Standard PagedAttention, FlashAttention Tiling, and Latent Cache Compression (MLA) across memory fragmentation rates, maximum concurrent user batch ceilings, long-context retrieval speeds, and hardware abstraction dependencies [INDEX: 18, 22].
 * Establish a **performance evaluation harness using Triton** to track the exact computational throughput and memory bus latency metrics achieved when compiling a fused paged-attention lookup operator directly into fast GPU registers.
 
+##  Star History
+<div align="center">
+<a href="https://www.star-history.com/?repos=ishandutta2007%2FAwesome-Paged-Attention&type=date&legend=bottom-right">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ishandutta2007/Awesome-Paged-Attention&type=date&theme=dark&legend=bottom-right" />
+<source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ishandutta2007/Awesome-Paged-Attention&type=date&legend=bottom-right" />
+<img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ishandutta2007/Awesome-Paged-Attention&type=date&legend=bottom-right" />
+</picture>
+</a>
+</div>
+
 ***
 
 **Proactive Repository Follow-Ups:**

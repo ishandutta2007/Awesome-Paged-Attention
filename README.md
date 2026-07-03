@@ -19,15 +19,11 @@ flowchart LR
     --> C["Compressed Latent Cache (MLA, 2025+)<br/>(Low-Rank Latent KV Cache Compression)"]
 ```
 
-*   **The Contiguous Over-Allocation Era (Traditional LLM Serving, Pre-2023)**
-    *   *Concept:* The structural baseline [INDEX: 22]. Because GPU kernels require contiguous memory layouts to execute parallel matrix multiplication efficiently, early serving systems allocated massive, unbroken chunks of VRAM upfront based on the model's maximum context length boundary (e.g., reserving slots for 2,048 or 4,096 tokens) regardless of how short the actual user request was [INDEX: 22].
-    *   *Limitation:* Catastrophic VRAM waste. Up to $60\%$ to $80\%$ of serving memory was lost to **Internal Fragmentation** (reserved slots left permanently blank), **External Fragmentation** (fragmented memory holes too small to fit new request blocks), and **Virtual Memory Reservation Overhead** (allocations for text that hadn't been written yet), capping batch concurrency thresholds severely.
-*   **The Virtual Memory Paging Revolution (PagedAttention / vLLM, 2023)**
-    *   *Concept:* Dismantled the contiguous allocation barrier by introducing virtual memory page abstractions to the GPU [INDEX: 22]. The algorithm chunks the Key-Value vectors of a sequence into a list of fixed-size, independent **KV Blocks** (typically hosting 16 or 32 tokens) [INDEX: 22]. A localized **Block Table** maps these logical pages to non-contiguous physical memory coordinates across the GPU VRAM dynamically.
-    *   *Significance:* Fully eliminated memory fragmentation bottlenecks. It recovered nearly $96\%$ of wasted VRAM space, enabling commercial cloud servers to scale up active multi-user concurrency batches by over $4\times$ to $5\times$ out-of-the-box without destroying token processing velocities.
-*   **The Fused Low-Rank Latent Cache Era (~2025–Present)**
-    *   *Concept:* The current modern state-of-the-art foundation standard. Rather than managing massive, uncompressed cache pages purely at the software engineering layer, modern architectures (such as DeepSeek-V3) tackle the memory wall at the deep mathematical level using **Multi-Head Latent Attention (MLA)** [INDEX: 18].
-    *   *Significance:* Compresses the absolute Key-Value cache dimension down into a highly dense, low-rank latent vector *before* memory storage occurs [INDEX: 18]. When combined alongside PagedAttention block routers, it slashes total VRAM cache footprints by over $93\%$, completely rewriting the economics of long-context token serving [INDEX: 18].
+| Era / Milestone | Core Concept | Significance / Limitation | Year First Used | Paper Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| **The Contiguous Over-Allocation Era (Traditional LLM Serving)** | The structural baseline [INDEX: 22]. GPU kernels require contiguous memory layouts, so early serving systems allocated massive, unbroken chunks of VRAM upfront based on the model's maximum context length boundary (e.g., 2,048 or 4,096 tokens) regardless of how short the actual user request was [INDEX: 22]. | Catastrophic VRAM waste. Up to $60\%$ to $80\%$ of serving memory was lost to **Internal Fragmentation**, **External Fragmentation**, and **Virtual Memory Reservation Overhead**, capping batch concurrency thresholds severely. | Pre-2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) |
+| **The Virtual Memory Paging Revolution (PagedAttention / vLLM)** | Dismantled the contiguous allocation barrier by introducing virtual memory page abstractions to the GPU [INDEX: 22]. The algorithm chunks Key-Value vectors of a sequence into fixed-size, independent **KV Blocks** (typically 16 or 32 tokens) [INDEX: 22]. A localized **Block Table** maps these logical pages to non-contiguous physical memory coordinates. | Fully eliminated memory fragmentation bottlenecks. It recovered nearly $96\%$ of wasted VRAM space, enabling active multi-user concurrency batches to scale by over $4\times$ to $5\times$ without destroying token processing velocities. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) / [Sheng et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L100) |
+| **The Fused Low-Rank Latent Cache Era** | Compresses the absolute Key-Value cache dimension down into a highly dense, low-rank latent vector *before* memory storage occurs using **Multi-Head Latent Attention (MLA)** [INDEX: 18]. | Slashes total VRAM cache footprints by over $93\%$ when combined with PagedAttention block routers, completely rewriting the economics of long-context token serving [INDEX: 18]. | 2025 | [DeepSeek-AI (2025) [INDEX: 18]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L102) |
 
 ---
 
@@ -35,15 +31,11 @@ flowchart LR
 
 The PagedAttention family tree features specialized architectural modifications designed to optimize multi-tenant prompt caching and enable advanced multi-path tree routing decoding paradigms.
 
-- ### A. Vanilla PagedAttention (Dynamic Block Tiling)
-	*   **Mechanism:** Maps logical token sequences to disjointed physical memory tiles on-the-fly. The lookup attention kernel evaluates queries by reading the block table addresses sequentially, fetching non-contiguous cache blocks from VRAM contiguously into fast GPU registers.
-
-- ### B. Copy-on-Write Parallel Sampling (Tree Decoding)
-	*   **Mechanism:** Tailored for complex token-generation pipelines requiring alternative branching paths (e.g., Best-of-N sampling or Beam Search). When a prompt forks into multiple different text paths, the logical sequences map back to the *exact same physical memory page blocks for the parent text*. The system only instantiates a new physical block allocation (Copy-on-Write) when a child branch writes a distinct token ID natively.
-	*   **Pros:** Slashes VRAM overhead by over $90\%$ for multi-hypothesis generations, preventing memory exhaustion during deep tree-search runs.
-
-- ### C. Prefix Caching / Prompt Sharing
-	*   **Mechanism:** Implements structural memory caching for invariant system instructions or multi-turn conversational histories. If thousands of independent users query a bot with an identical system prefix prompt (e.g., a massive legal code framework or character guidelines), the PagedAttention lookup engine locks those initial physical blocks, routing all concurrent user threads to read from that single, shared memory enclave simultaneously.
+| Variant | Mechanism | Pros / Details | Year First Used | Paper Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| **Vanilla PagedAttention (Dynamic Block Tiling)** | Maps logical token sequences to disjointed physical memory tiles on-the-fly. The lookup attention kernel evaluates queries by reading the block table addresses sequentially, fetching non-contiguous cache blocks from VRAM contiguously into fast GPU registers. | Core dynamic tiling mechanics. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) |
+| **Copy-on-Write Parallel Sampling (Tree Decoding)** | Tailored for complex token-generation pipelines requiring alternative branching paths (e.g., Best-of-N sampling or Beam Search). When a prompt forks into multiple different text paths, the logical sequences map back to the *exact same physical memory page blocks for the parent text*. The system only instantiates a new physical block allocation (Copy-on-Write) when a child branch writes a distinct token ID natively. | Slashes VRAM overhead by over $90\%$ for multi-hypothesis generations, preventing memory exhaustion during deep tree-search runs. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) |
+| **Prefix Caching / Prompt Sharing** | Implements structural memory caching for invariant system instructions or multi-turn conversational histories. If thousands of independent users query a bot with an identical system prefix prompt, the PagedAttention lookup engine locks those initial physical blocks, routing all concurrent user threads to read from that single, shared memory enclave simultaneously. | Shared prompt memory lookup. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) / [Sheng et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L100) |
 
 ---
 
@@ -73,10 +65,10 @@ flowchart TB
     end
 ```
 
-*   **Logical Block Tables**
-    *   *Profile:* Coordinates memory addressing. Acts as an isolated lookup matrix that translates a sequence's sequential token index values straight into disorganized physical VRAM coordinates smoothly.
-*   **Block-Fused Attention Kernels**
-    *   *Profile:* Hardware-aware kernel optimization. Standard attention libraries fail when inputs are fractured across memory. Block-Fused Attention rewrites the low-level loop (utilizing Triton or custom CUDA blocks) to read fixed $16 \times 16$ or $32 \times 32$ block chunks into fast register arrays before computing dot products.
+| Component | Profile / Description | Year First Used | Paper Reference |
+| :--- | :--- | :--- | :--- |
+| **Logical Block Tables** | Coordinates memory addressing. Acts as an isolated lookup matrix that translates a sequence's sequential token index values straight into disorganized physical VRAM coordinates smoothly. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) |
+| **Block-Fused Attention Kernels** | Hardware-aware kernel optimization. Standard attention libraries fail when inputs are fractured across memory. Block-Fused Attention rewrites the low-level loop (utilizing Triton or custom CUDA blocks) to read fixed $16 \times 16$ or $32 \times 32$ block chunks into fast register arrays before computing dot products. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) |
 
 ---
 
@@ -84,23 +76,20 @@ flowchart TB
 
 Deploying virtual memory paged systems across high-volume commercial serving nodes introduces critical metadata overheads and pre-fill latency spikes.
 
-*   **The Metadata Lookup and Kernel Launch Latency Penalty**
-    *   *The Problem:* Because the model must look up and cross-reference block table coordinates continuously for every layer at every single autoregressive step, the software orchestration can introduce minor processing latencies, occasionally underutilizing the GPU tensor cores during fast batch decoding.
-    *   *Mitigation:* Implementing **Block-Size Optimization Tuning** (e.g., scaling page capacities to 32 or 64 tokens to reduce total block table row counts), combined with compiled **C++ runtime serving managers** to minimize CPU-GPU scheduling overheads.
-*   **The Pre-fill vs. Decode Allocation Asymmetry**
-    *   *The Problem:* LLM serving consists of two distinct processing stages: the *Pre-fill phase* (ingesting the initial user prompt all at once, which demands massive contiguous chunks instantly) and the *Decoding phase* (generating sequential tokens over time, which demands slow, incremental allocations) [INDEX: 22]. Running them concurrently causes memory allocation thrashing.
-    *   *Mitigation:* Implementing **Chunked Prefills and In-Flight Batching**, fracturing massive incoming prompts into small, manageable chunks that interleave smoothly with active generation tokens across execution batches [INDEX: 22].
+| Challenge / Problem | Impact / Description | Mitigation | Year First Used | Paper Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| **The Metadata Lookup and Kernel Launch Latency Penalty** | Because the model must look up and cross-reference block table coordinates continuously for every layer at every single autoregressive step, the software orchestration can introduce minor processing latencies, occasionally underutilizing the GPU tensor cores during fast batch decoding. | Implementing **Block-Size Optimization Tuning** (e.g., scaling page capacities to 32 or 64 tokens to reduce total block table row counts), combined with compiled **C++ runtime serving managers** to minimize CPU-GPU scheduling overheads. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) |
+| **The Pre-fill vs. Decode Allocation Asymmetry** | LLM serving consists of two distinct processing stages: the *Pre-fill phase* (ingesting the initial user prompt all at once, which demands massive contiguous chunks instantly) and the *Decoding phase* (generating sequential tokens over time, which demands slow, incremental allocations) [INDEX: 22]. Running them concurrently causes memory allocation thrashing. | Implementing **Chunked Prefills and In-Flight Batching**, fracturing massive incoming prompts into small, manageable chunks that interleave smoothly with active generation tokens across execution batches [INDEX: 22]. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) / [Sheng et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L100) |
 
 ---
 
 ## 5. Frontier Real-World AI Infrastructure Applications
 
-*   **High-Throughput Commercial SaaS serving (vLLM Deployments)**
-    *   *Application:* Serves as the primary production-grade orchestration engine underpining modern enterprise chatbot frameworks (e.g., OpenAI, Anthropic, DeepSeek architectures). Paged virtual memory managers and fused compilation kernels maximize hardware concurrency, serving thousands of active concurrent users per node stably.
-*   **Autonomous Software Engineering & Multi-File Repository Maintenance**
-    *   *Application:* Processes massive long-context code bases and text-dense document logs concurrently [INDEX: 22]. PagedAttention, layered alongside low-rank latent attention, maps complex cross-directory variable definitions and syntactic rules without triggering memory-bus or VRAM saturation [INDEX: 18, 22].
-*   **Multi-Turn Agentic Task Search and Tree Routing Loops**
-    *   *Application:* Powers advanced reasoning architectures running Monte Carlo Tree Search (MCTS) or long-horizon lookahead steps [INDEX: 1]. Copy-on-write page sharing allows agent graphs to explore thousands of branching alternative hypotheses concurrently, tracking intermediate validation codes without experiencing VRAM exhaustion [INDEX: 1].
+| Application | Description / Detail | Year First Used | Paper Reference |
+| :--- | :--- | :--- | :--- |
+| **High-Throughput Commercial SaaS serving (vLLM Deployments)** | Serves as the primary production-grade orchestration engine underpinning modern enterprise chatbot frameworks (e.g., OpenAI, Anthropic, DeepSeek architectures). Paged virtual memory managers and fused compilation kernels maximize hardware concurrency, serving thousands of active concurrent users per node stably. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) / [Sheng et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L100) |
+| **Autonomous Software Engineering & Multi-File Repository Maintenance** | Processes massive long-context code bases and text-dense document logs concurrently [INDEX: 22]. PagedAttention, layered alongside low-rank latent attention, maps complex cross-directory variable definitions and syntactic rules without triggering memory-bus or VRAM saturation [INDEX: 18, 22]. | 2023 | [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) & [DeepSeek-AI (2025) [INDEX: 18]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L102) |
+| **Multi-Turn Agentic Task Search and Tree Routing Loops** | Powers advanced reasoning architectures running Monte Carlo Tree Search (MCTS) or long-horizon lookahead steps [INDEX: 1]. Copy-on-write page sharing allows agent graphs to explore thousands of branching alternative hypotheses concurrently, tracking intermediate validation codes without experiencing VRAM exhaustion [INDEX: 1]. | 2018 | [Silberschatz et al. (2018) [INDEX: 1]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L97) & [Kwon et al. (2023) [INDEX: 22]](file:///C:/Users/ishan/Documents/Projects/Awesome-Paged-Attention/README.md#L99) |
 
 ---
 

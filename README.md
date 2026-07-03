@@ -4,6 +4,15 @@
   <img src="assets/banner.svg" alt="Awesome Paged Attention Banner" width="100%" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/ishandutta2007/Awesome-Awesome-Awesome"><img src="https://img.shields.io/badge/Awesome-%E2%9C%94-blueviolet?style=flat-square&logo=github" alt="Awesome"/></a><a href="https://discord.gg/jc4xtF58Ve"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" /></a>
+</p>
+
+<!--
+SEO Keywords: PagedAttention, KV Cache, LLM Serving, vLLM, DeepSeek MLA, GPU Memory Management, FlashAttention, Copy-on-Write, Prefix Caching
+SEO Description: A curated guide on PagedAttention evolution, core components, production challenges, and frontier real-world applications in LLM memory optimization.
+-->
+
 ## 📖 PagedAttention: History, Progression, Variants, & Applications
 
 **PagedAttention** is a hardware-aware memory management algorithm designed to eliminate memory fragmentation and optimize Video RAM (VRAM) utilization during the autoregressive decoding phase of Large Language Models (LLMs). Developed by Kwon et al. in 2023 ("Efficient Memory Management for Large Language Model Serving with PagedAttention") and commercialized via the **vLLM** engine, the framework resolves the severe Key-Value (KV) cache bottleneck [INDEX: 22]. 

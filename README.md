@@ -12,8 +12,11 @@ In standard autoregressive inference, the memory required to host historical tok
 The implementation of KV cache management has transitioned from rigid, contiguous memory allocations to dynamic virtual paging and hardware-fused low-rank latent cache compressions.
 
 
-```
-[Contiguous Over-Allocation Era] ───> [Virtual Memory Paging (PagedAttention, 2023)] ───> [Compressed Latent Cache (MLA, 2025+)](Massive VRAM Fragmentation Stalls)         (Dynamic Non-Contiguous Block Tiling)            (Low-Rank Cache Coordinate Shrinkage)
+```mermaid
+flowchart LR
+    A["Contiguous Over-Allocation Era<br/>(Massive VRAM Fragmentation & Memory Waste)"]
+    --> B["Virtual Memory Paging (PagedAttention, 2023)<br/>(Dynamic Non-Contiguous KV Block Allocation)"]
+    --> C["Compressed Latent Cache (MLA, 2025+)<br/>(Low-Rank Latent KV Cache Compression)"]
 ```
 
 *   **The Contiguous Over-Allocation Era (Traditional LLM Serving, Pre-2023)**
@@ -48,9 +51,28 @@ The PagedAttention family tree features specialized architectural modifications 
 
 To fetch non-contiguous tokens smoothly without triggering hardware stalls, the runtime engine intercepts generation loops using specialized logical-to-physical address decoders.
 
+
+```mermaid
+flowchart TB
+    subgraph L["Logical-to-Physical Block Translation"]
+        A["Logical Token Sequence: 0–31"]
+        --> B["Logical Block 0"]
+        --> C["Block Table Lookup"]
+        --> D["Physical Block Index 402<br/>(VRAM Slot A)"]
+
+        E["Logical Token Sequence: 32–63"]
+        --> F["Logical Block 1"]
+        --> G["Block Table Lookup"]
+        --> H["Physical Block Index 114<br/>(VRAM Slot B)"]
+
+        D --> I["Read Non-Contiguous Tiles into GPU SRAM Registers"]
+        H --> I
+
+        I --> J["Fused Online Softmax Block"]
+        J --> K["Causal Token Output"]
+    end
 ```
-Logical-to-Physical Block Translation[Logical Token Sequence: 0-31] ───> [Logical Block 0] ───> [Block Table Lookup] ───> [Physical Block Index 402 (VRAM Slot A)][Logical Token Sequence: 32-63] ──> [Logical Block 1] ───> [Block Table Lookup] ───> [Physical Block Index 114 (VRAM Slot B)]│▼[Causal Token Output] <─── [Fused Online Softmax Block] <─── [Read Non-Contiguous Tiles into GPU SRAM Registers]
-```
+
 *   **Logical Block Tables**
     *   *Profile:* Coordinates memory addressing. Acts as an isolated lookup matrix that translates a sequence's sequential token index values straight into disorganized physical VRAM coordinates smoothly.
 *   **Block-Fused Attention Kernels**

@@ -35,15 +35,15 @@ flowchart LR
 
 The PagedAttention family tree features specialized architectural modifications designed to optimize multi-tenant prompt caching and enable advanced multi-path tree routing decoding paradigms.
 
-### A. Vanilla PagedAttention (Dynamic Block Tiling)
-*   **Mechanism:** Maps logical token sequences to disjointed physical memory tiles on-the-fly. The lookup attention kernel evaluates queries by reading the block table addresses sequentially, fetching non-contiguous cache blocks from VRAM contiguously into fast GPU registers.
+- ### A. Vanilla PagedAttention (Dynamic Block Tiling)
+	*   **Mechanism:** Maps logical token sequences to disjointed physical memory tiles on-the-fly. The lookup attention kernel evaluates queries by reading the block table addresses sequentially, fetching non-contiguous cache blocks from VRAM contiguously into fast GPU registers.
 
-### B. Copy-on-Write Parallel Sampling (Tree Decoding)
-*   **Mechanism:** Tailored for complex token-generation pipelines requiring alternative branching paths (e.g., Best-of-N sampling or Beam Search). When a prompt forks into multiple different text paths, the logical sequences map back to the *exact same physical memory page blocks for the parent text*. The system only instantiates a new physical block allocation (Copy-on-Write) when a child branch writes a distinct token ID natively.
-*   **Pros:** Slashes VRAM overhead by over $90\%$ for multi-hypothesis generations, preventing memory exhaustion during deep tree-search runs.
+- ### B. Copy-on-Write Parallel Sampling (Tree Decoding)
+	*   **Mechanism:** Tailored for complex token-generation pipelines requiring alternative branching paths (e.g., Best-of-N sampling or Beam Search). When a prompt forks into multiple different text paths, the logical sequences map back to the *exact same physical memory page blocks for the parent text*. The system only instantiates a new physical block allocation (Copy-on-Write) when a child branch writes a distinct token ID natively.
+	*   **Pros:** Slashes VRAM overhead by over $90\%$ for multi-hypothesis generations, preventing memory exhaustion during deep tree-search runs.
 
-### C. Prefix Caching / Prompt Sharing
-*   **Mechanism:** Implements structural memory caching for invariant system instructions or multi-turn conversational histories. If thousands of independent users query a bot with an identical system prefix prompt (e.g., a massive legal code framework or character guidelines), the PagedAttention lookup engine locks those initial physical blocks, routing all concurrent user threads to read from that single, shared memory enclave simultaneously.
+- ### C. Prefix Caching / Prompt Sharing
+	*   **Mechanism:** Implements structural memory caching for invariant system instructions or multi-turn conversational histories. If thousands of independent users query a bot with an identical system prefix prompt (e.g., a massive legal code framework or character guidelines), the PagedAttention lookup engine locks those initial physical blocks, routing all concurrent user threads to read from that single, shared memory enclave simultaneously.
 
 ---
 
